@@ -34,7 +34,7 @@ h2 {
 }
 
 span {
-    color: #ff9800;
+    color: #FF0000;
     font-weight: bold;
 }
 
@@ -48,7 +48,7 @@ p {
 .btn {
     display: inline-block;
     padding: 12px 30px;
-    background: #007bff;
+    background: #000000;
     color: white;
     text-decoration: none;
     border-radius: 30px;
