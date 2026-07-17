@@ -38,3 +38,11 @@ jobs:
         run: |
           echo "Website deployed successfully to:"
           echo "s3://${{ secrets.S3_BUCKET_NAME }}/"
+
+      - name: Upload system report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-report
+          path: system_report.txt
+          retention-days: 7
+          if-no-files-found: error
