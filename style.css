@@ -44,18 +44,3 @@ p {
     margin-bottom: 30px;
     line-height: 1.6;
 }
-
-.btn {
-    display: inline-block;
-    padding: 12px 30px;
-    background: #000000;
-    color: white;
-    text-decoration: none;
-    border-radius: 30px;
-    transition: 0.3s;
-}
-
-.btn:hover {
-    background: #0056b3;
-    transform: translateY(-3px);
-}
