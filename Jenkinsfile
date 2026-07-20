@@ -12,7 +12,7 @@ pipeline {
     }
 
     environment {
-        EC2_HOST = '13.60.168.95'
+        EC2_HOST = credentials('ec2-host-ip')
     }
 
     stages {
@@ -58,10 +58,13 @@ pipeline {
                           -o StrictHostKeyChecking=accept-new \
                           "${SSH_USER}@${EC2_HOST}" '
                             set -e
+
                             sudo install -m 0644 \
                               /tmp/jenkins-index.html \
                               /var/www/html/index.html
+
                             rm /tmp/jenkins-index.html
+
                             sudo nginx -t
                             sudo systemctl reload nginx
                         '
@@ -69,20 +72,15 @@ pipeline {
                 }
             }
         }
-
     }
 
     post {
         success {
-            echo "Deployment successful: http://${EC2_HOST}/"
+            echo 'Website deployed successfully to EC2.'
         }
 
         failure {
             echo 'Pipeline failed. Check Console Output.'
-        }
-
-        cleanup {
-            sh 'rm -f deployed-page.html'
         }
     }
 }
