@@ -50,7 +50,7 @@ pipeline {
                         scp \
                           -i "${SSH_KEY}" \
                           -o StrictHostKeyChecking=accept-new \
-                          index.html \
+                          index.html style.css error.html \
                           "${SSH_USER}@${EC2_HOST}:/tmp/jenkins-index.html"
 
                         ssh \
