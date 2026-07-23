@@ -44,7 +44,7 @@ pipeline {
 
                 sh '''
                     rm -f release.zip
-                    zip -qr release.zip website/
+                    zip -qr release.zip index.html
                 '''
             }
         }
