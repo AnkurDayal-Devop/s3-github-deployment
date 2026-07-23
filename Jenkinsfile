@@ -12,21 +12,19 @@ pipeline {
     }
 
     environment {
-        EC2_HOST = credentials('ec2-host-ip')
+        AWS_DEFAULT_REGION = 'eu-north-1'
+        DEPLOYMENT_BUCKET = 'webapp-releases-ec2'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo 'Downloading the latest code from GitHub...'
                 checkout scm
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Testing index.html...'
-
                 sh '''
                     test -s index.html
                     grep -qi '<html' index.html
@@ -35,39 +33,36 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Package') {
             steps {
-                echo 'Deploying index.html to EC2...'
+                script {
+                    env.REVISION = sh(
+                        script: 'git rev-parse --short=12 HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
 
+                sh '''
+                    rm -f release.zip
+                    zip -qr release.zip website/
+                '''
+            }
+        }
+
+        stage('Publish Release') {
+            steps {
                 withCredentials([
-                    sshUserPrivateKey(
-                        credentialsId: 'ec2-ssh-key',
-                        keyFileVariable: 'SSH_KEY',
-                        usernameVariable: 'SSH_USER'
-                    )
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-jenkins']
                 ]) {
                     sh '''
-                        scp \
-                          -i "${SSH_KEY}" \
-                          -o StrictHostKeyChecking=accept-new \
-                          index.html \
-                          "${SSH_USER}@${EC2_HOST}:/tmp/jenkins-index.html"
+                        aws s3 cp release.zip \
+                          "s3://${DEPLOYMENT_BUCKET}/releases/webapp-${REVISION}.zip"
 
-                        ssh \
-                          -i "${SSH_KEY}" \
-                          -o StrictHostKeyChecking=accept-new \
-                          "${SSH_USER}@${EC2_HOST}" '
-                            set -e
+                        printf '%s' "${REVISION}" > current-version.txt
 
-                            sudo install -m 0644 \
-                              /tmp/jenkins-index.html \
-                              /var/www/html/index.html
-
-                            rm /tmp/jenkins-index.html
-
-                            sudo nginx -t
-                            sudo systemctl reload nginx
-                        '
+                        aws s3 cp current-version.txt \
+                          "s3://${DEPLOYMENT_BUCKET}/current-version.txt"
                     '''
                 }
             }
@@ -76,11 +71,15 @@ pipeline {
 
     post {
         success {
-            echo 'Website deployed successfully to EC2.'
+            echo "Release ${REVISION} published successfully."
         }
 
         failure {
-            echo 'Pipeline failed. Check Console Output.'
+            echo "Release failed. The S3 version pointer was not changed."
+        }
+
+        always {
+            sh 'rm -f release.zip current-version.txt'
         }
     }
 }
