@@ -74,17 +74,59 @@ pipeline {
                    [$class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: 'aws-jenkins']
                ]) {
+                   script {
+                       env.SSM_COMMAND_ID = sh(
+                           script: '''
+                               aws ssm send-command \
+                                 --document-name "AWS-RunShellScript" \
+                                 --instance-ids "$EC2_INSTANCE_ID" \
+                                 --parameters "commands=[\\"sudo /usr/local/bin/deploy-webapp ${REVISION}\\"]" \
+                                 --comment "Deploy release ${REVISION}" \
+                                 --query 'Command.CommandId' \
+                                 --output text
+                           ''',
+                           returnStdout: true
+                       ).trim()
+                       echo "SSM Command ID: ${env.SSM_COMMAND_ID}"
+                  }
+              }
+          }
+      }
+        stage('Wait for Deployment') {
+           steps {
+               withCredentials([
+                   [$class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-jenkins']
+               ]) {
                    sh '''
-                       aws ssm send-command \
-                          --document-name "AWS-RunShellScript" \
-                          --instance-ids "$EC2_INSTANCE_ID" \
-                          --parameters 'commands=["sudo /usr/local/bin/deploy-webapp"]' \
-                          --comment "Deploy web application"
+                       aws ssm wait command-executed \
+                          --command-id "$SSM_COMMAND_ID" \
+                          --instance-id "$EC2_INSTANCE_ID"
                     '''
-                }
-            }
-        }
-    }
+                 }
+             }
+         }
+         stage('Check Deployment Result') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-jenkins']
+                ]) {
+                    sh '''
+                        aws ssm get-command-invocation \
+                           --command-id "$SSM_COMMAND_ID" \
+                           --instance-id "$EC2_INSTANCE_ID" \
+                           --query '{
+                               Status:Status,
+                               ExitCode:ResponseCode,
+                               Output:StandardOutputContent,
+                               Error:StandardErrorContent
+                           }'
+                    '''
+                 }
+             }
+         }
+ }
 
     post {
         success {
