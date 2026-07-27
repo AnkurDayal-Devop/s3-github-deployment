@@ -14,6 +14,7 @@ pipeline {
     environment {
         AWS_DEFAULT_REGION = 'eu-north-1'
         DEPLOYMENT_BUCKET = 'webapp-releases-ec2'
+        EC2_INSTANCE_ID    = 'i-06654ce7d5adbd1cd'
     }
 
     stages {
@@ -63,6 +64,22 @@ pipeline {
 
                         aws s3 cp current-version.txt \
                           "s3://${DEPLOYMENT_BUCKET}/current-version.txt"
+                    '''
+                }
+            }
+        }
+        stage('Deploy with SSM') {
+           steps {
+               withCredentials([
+                   [$class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-jenkins']
+               ]) {
+                   sh '''
+                       aws ssm send-command \
+                          --document-name "AWS-RunShellScript" \
+                          --instance-ids "$EC2_INSTANCE_ID" \
+                          --parameters 'commands=["sudo /usr/local/bin/deploy-webapp"]' \
+                          --comment "Deploy web application"
                     '''
                 }
             }
