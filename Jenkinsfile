@@ -14,7 +14,7 @@ pipeline {
     environment {
         AWS_DEFAULT_REGION = 'eu-north-1'
         DEPLOYMENT_BUCKET  = 'webapp-releases-ec2'
-        EC2_INSTANCE_ID    = 'EC2-Instance'
+        EC2_INSTANCE_ID    = 'i-06654ce7d5adbd1cd'
     }
 
     stages {
